@@ -3,7 +3,7 @@ import { Text } from './schemas/text.schema';
 import { Inject, Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { Repository } from 'src/constans';
-import { ChatTextDto } from './dto/socket-chat.dto';
+import { CreateTextDto } from './dto/socket-chat.dto';
 
 @Injectable()
 export class SocketService {
@@ -50,7 +50,7 @@ export class SocketService {
   }
 
   async createChatText(
-    chatText: ChatTextDto,
+    chatText: CreateTextDto,
     authorId: string,
   ): Promise<Text | Error> {
     console.log('create-text');

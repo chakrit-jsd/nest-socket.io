@@ -2,7 +2,12 @@ export class RequestRoomDto {
   member: string;
 }
 
-export class ChatTextDto {
+export class CreateTextDto {
   room: string;
   text: string;
+}
+
+export class GetTextDto {
+  room: string;
+  lastTime?: string = null;
 }

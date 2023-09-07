@@ -8,11 +8,13 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-// import { UseGuards, Catch } from '@nestjs/common';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { SocketService } from './socket.service';
-import { AuthService } from 'src/auth/auth.service';
-import { ChatTextDto, RequestRoomDto } from './dto/socket-chat.dto';
+import {
+  CreateTextDto,
+  RequestRoomDto,
+  GetTextDto,
+} from './dto/socket-chat.dto';
 
 @WebSocketGateway({
   namespace: 'chat',
@@ -38,7 +40,7 @@ export class SocketGateWay implements OnGatewayConnection, OnGatewayInit {
     });
   }
 
-  async handleConnection(socket: Socket) {
+  async handleConnection() {
     console.log('connect');
   }
 
@@ -71,10 +73,10 @@ export class SocketGateWay implements OnGatewayConnection, OnGatewayInit {
     return resRoom;
   }
 
-  @SubscribeMessage('chat_text')
-  async chatText(
+  @SubscribeMessage('create_text')
+  async createText(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() chat: ChatTextDto,
+    @MessageBody() chat: CreateTextDto,
   ) {
     console.log('top chat', socket.rooms);
     const res = await this.socketService.createChatText(
@@ -86,6 +88,20 @@ export class SocketGateWay implements OnGatewayConnection, OnGatewayInit {
     }
     this.server.timeout(1000).to(res.room.toString()).emit('text_receive', res);
     return true;
+  }
+
+  @SubscribeMessage('get_texts')
+  async getText(@MessageBody() getTextDto: GetTextDto) {
+    const resTexts = await this.socketService.findTexts(
+      getTextDto.room,
+      getTextDto.lastTime,
+    );
+
+    if (resTexts instanceof Error) {
+      return false;
+    }
+
+    return resTexts;
   }
 }
 
