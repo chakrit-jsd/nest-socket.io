@@ -31,13 +31,15 @@ export class AuthGuard implements CanActivate {
   }
 
   static authGuardJWT(access_token: string) {
-    console.log(access_token);
+    // console.log(typeof access_token);
     try {
       const { payload } = jwt.verify(access_token, process.env.JWT_SECRET, {
         complete: true,
       });
+      // console.log(payload);
       return payload;
     } catch (error) {
+      console.log(error);
       if (error instanceof jwt.TokenExpiredError) {
         throw new WsException('token expired');
       }
