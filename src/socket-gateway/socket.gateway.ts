@@ -17,6 +17,7 @@ import {
   GetTextDto,
   TypingDto,
   LeaveRoom,
+  ReJoinRoom,
 } from './dto/socket-chat.dto';
 
 @WebSocketGateway({
@@ -47,6 +48,7 @@ export class SocketGateWay
   }
 
   async handleConnection() {
+    console.log((await this.server.fetchSockets()).length);
     // console.log(socket['user']);
     // console.log('connect');
     // console.log(socket.rooms);
@@ -88,6 +90,16 @@ export class SocketGateWay
     socket.join(resRoom.id);
     // console.log('join', socket.rooms);
     socket.emit('open_room', resRoom);
+    return true;
+  }
+
+  @SubscribeMessage('re_join_room')
+  reJoinRoom(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() rejoin: ReJoinRoom,
+  ) {
+    socket.join(rejoin.room);
+
     return true;
   }
 

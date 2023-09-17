@@ -23,6 +23,10 @@ export class LeaveRoom {
   room: string;
 }
 
+export class ReJoinRoom {
+  room: string;
+}
+
 export interface ResponseText {
   _id: string;
   author: string;
