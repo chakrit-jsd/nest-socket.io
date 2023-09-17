@@ -49,9 +49,6 @@ export class SocketGateWay
 
   async handleConnection() {
     console.log((await this.server.fetchSockets()).length);
-    // console.log(socket['user']);
-    // console.log('connect');
-    // console.log(socket.rooms);
   }
 
   handleDisconnect(@ConnectedSocket() socket: Socket) {
@@ -99,7 +96,6 @@ export class SocketGateWay
     @MessageBody() rejoin: ReJoinRoom,
   ) {
     socket.join(rejoin.room);
-
     return true;
   }
 
