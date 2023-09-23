@@ -18,7 +18,10 @@ import {
   TypingDto,
   LeaveRoom,
   ReJoinRoom,
+  GetMember,
 } from './dto/socket-chat.dto';
+import { RedisService } from './redis.service';
+import { Text } from './schemas/text.schema';
 
 @WebSocketGateway({
   namespace: 'chat',
@@ -29,7 +32,11 @@ export class SocketGateWay
 {
   @WebSocketServer()
   private server: Server;
-  constructor(private readonly socketService: SocketService) {}
+
+  constructor(
+    private readonly socketService: SocketService,
+    private readonly redisService: RedisService,
+  ) {}
 
   afterInit(server: Server) {
     // middleware Jwt token;
@@ -47,14 +54,9 @@ export class SocketGateWay
     });
   }
 
-  async handleConnection() {
-    console.log((await this.server.fetchSockets()).length);
-  }
+  async handleConnection() {}
 
-  handleDisconnect(@ConnectedSocket() socket: Socket) {
-    console.log('disconnect', socket.id);
-    // console.log(socket.rooms);
-  }
+  handleDisconnect() {}
 
   @SubscribeMessage('join_room')
   async joinRoom(
@@ -64,7 +66,7 @@ export class SocketGateWay
     if (room.member === socket['user'].id) {
       return false;
     }
-    const resRoom = await this.socketService.findRoom(
+    let resRoom = await this.socketService.findRoom(
       socket['user'].id,
       room.member,
     );
@@ -73,19 +75,15 @@ export class SocketGateWay
     }
 
     if (!resRoom) {
-      const resRoom = await this.socketService.createRoom(
+      resRoom = await this.socketService.createRoom(
         socket['user'].id,
         room.member,
       );
       if (resRoom instanceof Error) {
         return false;
       }
-      socket.join(resRoom.id);
-      socket.emit('open_room', resRoom);
-      return true;
     }
     socket.join(resRoom.id);
-    // console.log('join', socket.rooms);
     socket.emit('open_room', resRoom);
     return true;
   }
@@ -100,13 +98,25 @@ export class SocketGateWay
   }
 
   @SubscribeMessage('leave_room')
-  leaveRoom(
+  async leaveRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() leave: LeaveRoom,
   ) {
-    // console.log(socket.rooms);
+    // console.log(socket['user']);
     socket.leave(leave.room);
     // console.log(socket.rooms);
+  }
+  @SubscribeMessage('get_member')
+  async getMember(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() room: GetMember,
+  ) {
+    const res = await this.socketService.getMember(room.room);
+    if (res instanceof Error) {
+      return false;
+    }
+
+    return res;
   }
 
   @SubscribeMessage('create_text')
@@ -122,29 +132,34 @@ export class SocketGateWay
     if (res instanceof Error) {
       return false;
     }
-    if (
-      (await this.server.in(res.room.toString()).fetchSockets()).length === 1
-    ) {
-      console.log('notification');
-    }
-    const { _id, author, text, createdAt, room } = res.toObject();
-    this.server
-      .timeout(1000)
-      .to(res.room.toString())
-      .emit(
-        'text_receive',
-        { _id: _id.toString(), author, text, createdAt, room },
-        (err: any, res: string[]) => {
-          console.log('err', err);
-          console.log('res', res);
-        },
-      );
-    // console.log(resReceive);
+    this.sendText(socket, res);
+    await this.redisService.setHistory(chat.members, res.room.toString());
     return true;
   }
 
+  private async sendText(socket: Socket, resText: Text) {
+    const { _id, author, text, createdAt, room } = resText.toObject();
+    const ack: Array<string> = await socket.nsp
+      .timeout(1000)
+      .to(resText.room.toString())
+      .emitWithAck('text_receive', {
+        _id: _id.toString(),
+        author,
+        text,
+        createdAt,
+        room,
+      })
+      .catch(() => console.log);
+    if (ack.length === 1) {
+      this.redisService.setOneUnreadCount(ack[0], resText.room.toString());
+    }
+  }
+
   @SubscribeMessage('get_texts')
-  async getText(@MessageBody() getTextDto: GetTextDto) {
+  async getText(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() getTextDto: GetTextDto,
+  ) {
     // console.log(getTextDto);
     const resTexts = await this.socketService.findTexts(
       getTextDto.room,
@@ -155,7 +170,9 @@ export class SocketGateWay
     if (resTexts instanceof Error) {
       return false;
     }
-
+    if (socket.rooms.has(getTextDto.room)) {
+      this.redisService.delOneUnreadCount(socket['user'].id, getTextDto.room);
+    }
     return resTexts;
   }
 
@@ -182,20 +199,10 @@ export class SocketGateWay
     @ConnectedSocket() socket: Socket,
     @MessageBody() typingDto: TypingDto,
   ) {
-    this.server.to(typingDto.room).emit('typing_receive', {
+    socket.to(typingDto.room).emit('typing_receive', {
       author: socket['user'].id,
       status: typingDto.status,
       room: typingDto.room,
     });
-  }
-}
-
-@WebSocketGateway({ namespace: 'notification', cors: { origin: '*' } })
-export class NotificationGateWay implements OnGatewayConnection {
-  @WebSocketServer()
-  private server: Server;
-
-  handleConnection(socket: Socket) {
-    console.log(socket.id);
   }
 }

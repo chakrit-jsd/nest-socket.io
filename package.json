@@ -30,11 +30,13 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/platform-socket.io": "^10.2.2",
     "@nestjs/websockets": "^10.2.2",
+    "@types/redis": "^4.0.11",
     "@types/socket.io": "^3.0.2",
     "axios": "^1.5.0",
     "cookie-parser": "^1.4.6",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.0",
+    "redis": "^4.6.8",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1"
   },

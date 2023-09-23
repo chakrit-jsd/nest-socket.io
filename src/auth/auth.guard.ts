@@ -39,7 +39,7 @@ export class AuthGuard implements CanActivate {
       // console.log(payload);
       return payload;
     } catch (error) {
-      console.log(error);
+      // console.log(error);
       if (error instanceof jwt.TokenExpiredError) {
         throw new WsException('token expired');
       }

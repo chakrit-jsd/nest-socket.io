@@ -12,6 +12,15 @@ export class SocketService {
     @Inject(Repository.TEXT_MODEL) private chatText: Model<Text>,
   ) {}
 
+  async getMember(room: string) {
+    try {
+      const res = await this.room.findById(room);
+      return res;
+    } catch (error) {
+      return error;
+    }
+  }
+
   async createRoom(id1: string, id2: string) {
     try {
       const room = await this.room.create({ members: [id1, id2] });
@@ -54,15 +63,16 @@ export class SocketService {
       texts.reverse();
       return texts;
     } catch (error) {
+      console.log(error);
       return error;
     }
   }
 
+  // async findManyTexts(id: string, )
   async createChatText(
     chatText: CreateTextDto,
     authorId: string,
   ): Promise<Text | Error> {
-    // console.log('create-text');
     try {
       const res = await this.chatText.create({ ...chatText, author: authorId });
       return res;
